@@ -21,8 +21,14 @@ def arg_parser():
 	
 #	parser.add_argument('-r','--run',help='run app with option Example : python script_name endpoint ')
 	parser.add_argument('endpoint',help='Endpoint necessary for run program')
+	parser.add_argument('--datbasename',help='Destination database name')
+	parser.add_argument('--hostname',help='Destination database hostname')
+	parser.add_argument('--username',help='Destination database username')
+	parser.add_argument('--password',help='Destination database password')
+	parser.add_argument('--driver',help='Export database driver for connection',default='mysql')
 	parser.add_argument('--verbose', help='Show command output',action='store_true')
 	args = parser.parse_args()
+	print(args.driver)
 	if args.verbose:
 		VERBOSE = True
 	return args
@@ -41,6 +47,9 @@ def get_table_name(fpaths):
 		table_name = last.split('/')[0]
 		tables.add(table_name)
 		
+
+def sqoop_export_into_db():
+	pass
 
 if __name__ == '__main__':
 	args   = arg_parser()
