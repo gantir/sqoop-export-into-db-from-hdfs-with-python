@@ -5,9 +5,9 @@ import argparse
 import pprint
 import re
 import os
-
+import sys
 #APP options and variable
-
+sqoop = "sqoop-export --connect {} --table {} --username {} --password {} --export-dir {} "
 pp = pprint.PrettyPrinter(indent=4)
 regex = r"(\/[0-9\/]+)"
 parser = argparse.ArgumentParser()
@@ -15,6 +15,10 @@ PORT=50070
 HOST='namenode'
 CONNECTION_STRING='http://{}:{}'.format(HOST,PORT)
 VERBOSE=False
+#Contain all tables and recent path
+tb_recent_path = []
+tb_last_path = []
+#Contains all tables
 tables = set()
 #contain table and all path
 datatables = dict()
@@ -24,12 +28,12 @@ unique_path = set()
 def arg_parser():
 	
 #	parser.add_argument('-r','--run',help='run app with option Example : python script_name endpoint ')
-	parser.add_argument('endpoint',help='Endpoint necessary for run program')
-	parser.add_argument('--datbasename',help='Destination database name')
-	parser.add_argument('--hostname',help='Destination database hostname')
-	parser.add_argument('--username',help='Destination database username')
-	parser.add_argument('--password',help='Destination database password')
-	parser.add_argument('--driver',help='Export database driver for connection',default='mysql')
+	parser.add_argument('-e','--endpoint',help='Endpoint necessary for run program',required=True)
+	parser.add_argument('-d','--databasename',help='Destination database name')
+	parser.add_argument('-hn','--hostname',help='Destination database hostname')
+	parser.add_argument('-u','--username',help='Destination database username')
+	parser.add_argument('-p','--password',help='Destination database password')
+	parser.add_argument('-dr','--driver',help='Export database driver for connection',default='mysql')
 	parser.add_argument('--verbose', help='Show command output',action='store_true')
 	args = parser.parse_args()
 	if args.verbose:
@@ -39,10 +43,9 @@ def arg_parser():
 def connection():
 	return InsecureClient(CONNECTION_STRING)
 
-def show_folder_into_endpoint_root():
+def show_folder_into_endpoint_root(client,args):
 	
 	return [psp.join(dpath, fname) for dpath, _, fnames in client.walk(args.endpoint) for fname in fnames]
-	pp.pprint(fpaths)
 
 def get_table_name(fpaths):
 	for path in fpaths:
@@ -58,7 +61,7 @@ def get_table_name(fpaths):
 			datatables.update({table_name: dpaths})
 		
 
-def sqoop_export_into_db():
+def sqoop_export_path():
 	for table in datatables:
 		for t in datatables[table]:
 			res = re.split(regex,t)
@@ -67,15 +70,94 @@ def sqoop_export_into_db():
 			unique_path.add(path)
 			
 
+def command_builder(args,tbname,export_dir):
+	conn_string = ""
+	if args.driver == 'mysql':
+		conn_string = 'jdbc:mysql://{}/{}'.format(args.hostname,args.databasename)
+	elif args.driver == 'postgres':
+		conn_string = 'jdbc:postgres://{}/{}'.format(args.hostname,args.databasename)
+	else:
+		pp.pprint("Driver unkown")
+		sys.exit(0)
+
+	
+	#sqoop = "sqoo-export --connect {} --table {} --username {} --password {} --export-dir {} "
+	if args.username is None :
+		pp.pprint("Destination databasename username is required")
+		sys.exit(0)
+	if args.databasename is None:
+		pp.pprint("Destination databasename is required")
+		sys.exit(0)
+	if args.password is None:
+		pp.pprint("Destination databasename password is required")
+		sys.exit(0)
+	if args.hostname is None :
+		pp.pprint("Destination databasename hostname or address is required")
+		sys.exit(0)
+	cmd = sqoop.format(conn_string,tbname,args.username,args.password,export_dir)
+	os.system(cmd)
+
+
+def export_into_db(args):
+	for p in unique_path:
+		if p not in tb_last_path:
+			tbname = re.split(regex,p)[-1]
+			print(tbname)
+			#command_builder(args,tbname,p)
+
+
+
+def writer_last_segment_path_into_file(fpaths):
+	f = open('last_segment_path','w')
+	for path in fpaths:
+		f.write(path + "\r\n")
+	f.close()
+
+
+def get_recent_segment():
+	for d in datatables:
+		data = dict()
+		content = []
+		for path in datatables[d]:
+			rs 	= re.split(regex,path)
+			tmstamp = re.sub(r'\D','',rs[1])
+			content.append(int(tmstamp))
+			data.update({int(tmstamp):path})
+			rs = re.split(regex,data[max(content)])
+			pf = rs[0] + rs[1] + d
+		tb_recent_path.append(pf)
+	writer_last_segment_path_into_file(tb_recent_path)
+	
+def read_last_path():
+	f = open('last_segment_path','r')
+	data = f.read()
+	for d in data:
+		tb_last_path.append(d)		
+
+
+def main():
+	args    	= arg_parser()
+	client  	= connection()
+	fpaths  	= show_folder_into_endpoint_root(client,args)
+	read_last_path()
+	get_table_name(fpaths)
+	sqoop_export_path()
+	get_recent_segment()
+	export_into_db(args)
+	
+
+
 
 if __name__ == '__main__':
-	args   = arg_parser()
-	client = connection()
-	fpaths = show_folder_into_endpoint_root()
-	get_table_name(fpaths)
-	#pp.pprint(datatables)
-	sqoop_export_into_db()
-	pp.pprint(unique_path)
+	main()
+
+
+
+
+
+
+
+
 
 
 
