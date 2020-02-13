@@ -18,6 +18,7 @@ VERBOSE=False
 #Contain all tables and recent path
 tb_recent_path = []
 tb_last_path = []
+last_tble_int = set()
 #Contains all tables
 tables = set()
 #contain table and all path
@@ -95,23 +96,33 @@ def command_builder(args,tbname,export_dir):
 		pp.pprint("Destination databasename hostname or address is required")
 		sys.exit(0)
 	cmd = sqoop.format(conn_string,tbname,args.username,args.password,export_dir)
-	os.system(cmd)
+	#os.system(cmd)
 
 
 def export_into_db(args):
 	for p in unique_path:
-		if p not in tb_last_path:
+		tmps = re.sub(r'\D','',p)
+		if int(tmps) > max(last_tble_int):
 			tbname = re.split(regex,p)[-1]
-			print(tbname)
-			#command_builder(args,tbname,p)
+			command_builder(args,tbname,p)
 
 
 
 def writer_last_segment_path_into_file(fpaths):
-	f = open('last_segment_path','w')
+	have_new_path = False
+	new_path = set()
 	for path in fpaths:
-		f.write(path + "\r\n")
-	f.close()
+		tmps = re.sub(r'\D','',path)
+		if int(tmps) > max(last_tble_int):
+			new_path.add(path + "\r\n")
+			have_new_path = True
+	
+	if have_new_path :
+		print("Have new segment")
+		f = open('last_segment_path','w')
+		for p in new_path:
+			f.write(p)
+		f.close()
 
 
 def get_recent_segment():
@@ -126,14 +137,13 @@ def get_recent_segment():
 			rs = re.split(regex,data[max(content)])
 			pf = rs[0] + rs[1] + d
 		tb_recent_path.append(pf)
-	writer_last_segment_path_into_file(tb_recent_path)
 	
 def read_last_path():
-	f = open('last_segment_path','r')
-	data = f.read()
+	data = open('last_segment_path','r')
 	for d in data:
+		tmps = re.sub(r'\D','',d)
+		last_tble_int.add(int(tmps))
 		tb_last_path.append(d)		
-
 
 def main():
 	args    	= arg_parser()
@@ -143,6 +153,7 @@ def main():
 	get_table_name(fpaths)
 	sqoop_export_path()
 	get_recent_segment()
+	writer_last_segment_path_into_file(tb_recent_path)
 	export_into_db(args)
 	
 
