@@ -25,6 +25,11 @@ tables = set()
 datatables = dict()
 #contain unique path to directory
 unique_path = set()
+
+def extract_tmps(target):
+	return re.sub(r'\D','',target)
+
+
 #Get command line arg
 def arg_parser():
 	
@@ -144,6 +149,9 @@ def read_last_path():
 		tmps = re.sub(r'\D','',d)
 		last_tble_int.add(int(tmps))
 		tb_last_path.append(d)		
+
+
+
 
 def main():
 	args    	= arg_parser()
