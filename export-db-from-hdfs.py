@@ -106,7 +106,7 @@ def command_builder(args,tbname,export_dir):
 
 def export_into_db(args):
 	for p in unique_path:
-		tmps = re.sub(r'\D','',p)
+		tmps = extract_tmps(p)
 		if int(tmps) > max(last_tble_int):
 			tbname = re.split(regex,p)[-1]
 			command_builder(args,tbname,p)
@@ -117,7 +117,7 @@ def writer_last_segment_path_into_file(fpaths):
 	have_new_path = False
 	new_path = set()
 	for path in fpaths:
-		tmps = re.sub(r'\D','',path)
+		tmps = extract_tmps(path)
 		if int(tmps) > max(last_tble_int):
 			new_path.add(path + "\r\n")
 			have_new_path = True
@@ -136,7 +136,7 @@ def get_recent_segment():
 		content = []
 		for path in datatables[d]:
 			rs 	= re.split(regex,path)
-			tmstamp = re.sub(r'\D','',rs[1])
+			tmstamp = extract_tmps(rs[1])
 			content.append(int(tmstamp))
 			data.update({int(tmstamp):path})
 			rs = re.split(regex,data[max(content)])
@@ -146,7 +146,7 @@ def get_recent_segment():
 def read_last_path():
 	data = open('last_segment_path','r')
 	for d in data:
-		tmps = re.sub(r'\D','',d)
+		tmps = extract_tmps(d)
 		last_tble_int.add(int(tmps))
 		tb_last_path.append(d)		
 
